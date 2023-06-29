@@ -77,3 +77,16 @@ func buildConfigFromFlags(context string, kubeConfigFiles []string) (*rest.Confi
 			CurrentContext: context,
 		}).ClientConfig()
 }
+
+func Contains[E comparable](s []E, v E) int {
+	for i := range s {
+		if v == s[i] {
+			return i
+		}
+	}
+	return -1
+}
+
+func Remove[E comparable](s []E, i int) []E {
+	return append(s[:i], s[i+1:]...)
+}

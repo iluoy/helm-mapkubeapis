@@ -32,19 +32,14 @@ var (
 )
 
 // GetActionConfig returns action configuration based on Helm env
-func GetActionConfig(namespace string, kubeConfig common.KubeConfig) (*action.Configuration, error) {
+func GetActionConfig(kubeConfig common.KubeConfig) (*action.Configuration, error) {
 	actionConfig := new(action.Configuration)
 
 	// Add kube config settings passed by user
 	settings.KubeConfig = kubeConfig.File
 	settings.KubeContext = kubeConfig.Context
 
-	// check if the namespace is passed by the user. If not get Helm to return the current namespace
-	if namespace == "" {
-		namespace = settings.Namespace()
-	}
-
-	err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), debug)
+	err := actionConfig.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug)
 	if err != nil {
 		return nil, err
 	}

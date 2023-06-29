@@ -22,11 +22,15 @@ import (
 
 // EnvSettings defined settings
 type EnvSettings struct {
-	DryRun         bool
-	KubeConfigFile string
-	KubeContext    string
-	MapFile        string
-	Namespace      string
+	DryRun                      bool
+	KubeConfigFile              string
+	KubeContext                 string
+	MapFile                     string
+	Namespaces                  []string
+	AllNamespaces               bool
+	ReleasesAndNamespaces       []string
+	ExceptNamespaces            []string
+	ExceptReleasesAndNamespaces []string
 }
 
 // New returns default env settings
@@ -46,5 +50,9 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeConfigFile, "kubeconfig", "", "path to the kubeconfig file")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.StringVar(&s.MapFile, "mapfile", s.MapFile, "path to the API mapping file")
-	fs.StringVar(&s.Namespace, "namespace", s.Namespace, "namespace scope of the release")
+	fs.BoolVarP(&s.AllNamespaces, "all-namespaces", "A", false, "map kube api of all releases across all namespaces")
+	fs.StringSliceVar(&s.ReleasesAndNamespaces, "releases-namespaces", []string{}, "multiple releases, for example: --releases-namespaces Release1.NS1 Release2.NS2")
+	fs.StringSliceVar(&s.Namespaces, "namespaces", []string{}, "multiple namespaces, for example: --namespaces NS1 NS2")
+	fs.StringSliceVar(&s.ExceptNamespaces, "except-namespaces", []string{}, "except multiple namespaces, for example: --except-namespaces NS1 NS2")
+	fs.StringSliceVar(&s.ExceptReleasesAndNamespaces, "except-releases-namespaces", []string{}, "except multiple releases namespaces, for example: --except-releases-namespaces Release1.NS1 Release2.NS2")
 }

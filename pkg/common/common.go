@@ -17,10 +17,10 @@ limitations under the License.
 package common
 
 import (
-	"log"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
 
 	"github.com/helm/helm-mapkubeapis/pkg/mapping"
@@ -34,11 +34,15 @@ type KubeConfig struct {
 
 // MapOptions are the options for mapping deprecated APIs in a release
 type MapOptions struct {
-	DryRun           bool
-	KubeConfig       KubeConfig
-	MapFile          string
-	ReleaseName      string
-	ReleaseNamespace string
+	Logger                      *logrus.Logger
+	DryRun                      bool
+	KubeConfig                  KubeConfig
+	MapFile                     string
+	Namespaces                  []string
+	AllNamespaces               bool
+	ReleasesAndNamespaces       []string
+	ExceptNamespaces            []string
+	ExceptReleasesAndNamespaces []string
 }
 
 // UpgradeDescription is description of why release was upgraded
@@ -46,7 +50,7 @@ const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback 
 
 // ReplaceManifestUnSupportedAPIs returns a release manifest with deprecated or removed
 // Kubernetes APIs updated to supported APIs
-func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig KubeConfig) (string, error) {
+func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig KubeConfig, logger *logrus.Logger) (string, error) {
 	var modifiedManifest = origManifest
 	var err error
 	var mapMetadata *mapping.Metadata
@@ -66,7 +70,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	}
 
 	// Check for deprecated or removed APIs and map accordingly to supported versions
-	modifiedManifest, err = ReplaceManifestData(mapMetadata, modifiedManifest, kubeVersionStr)
+	modifiedManifest, err = ReplaceManifestData(mapMetadata, modifiedManifest, kubeVersionStr, logger)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +81,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 // ReplaceManifestData scans the release manifest string for deprecated APIs in a given Kubernetes version and replaces
 // their groups and versions if there is a successor, or fully removes the manifest for that specific resource if no
 // successors exist (such as the PodSecurityPolicy API).
-func ReplaceManifestData(mapMetadata *mapping.Metadata, modifiedManifest string, kubeVersionStr string) (string, error) {
+func ReplaceManifestData(mapMetadata *mapping.Metadata, modifiedManifest string, kubeVersionStr string, logger *logrus.Logger) (string, error) {
 	for _, mapping := range mapMetadata.Mappings {
 		deprecatedAPI := mapping.DeprecatedAPI
 		supportedAPI := mapping.NewAPI
@@ -94,16 +98,16 @@ func ReplaceManifestData(mapMetadata *mapping.Metadata, modifiedManifest string,
 
 		if count := strings.Count(modifiedManifest, deprecatedAPI); count > 0 {
 			if semver.Compare(apiVersionStr, kubeVersionStr) > 0 {
-				log.Printf("The following API:\n\"%s\" does not require mapping as the "+
+				logger.Infof("The following API:\n\"%s\" does not require mapping as the "+
 					"API is not deprecated or removed in Kubernetes \"%s\"\n", deprecatedAPI, kubeVersionStr)
 				// skip to next mapping
 				continue
 			}
 			if supportedAPI == "" {
-				log.Printf("Found %d instances of deprecated or removed Kubernetes API:\n\"%s\"\nNo supported API equivalent\n", count, deprecatedAPI)
+				logger.Infof("Found %d instances of deprecated or removed Kubernetes API:\n\"%s\"\nNo supported API equivalent\n", count, deprecatedAPI)
 				modifiedManifest = removeDeprecatedAPIWithoutSuccessor(count, deprecatedAPI, modifiedManifest)
 			} else {
-				log.Printf("Found %d instances of deprecated or removed Kubernetes API:\n\"%s\"\nSupported API equivalent:\n\"%s\"\n", count, deprecatedAPI, supportedAPI)
+				logger.Infof("Found %d instances of deprecated or removed Kubernetes API:\n\"%s\"\nSupported API equivalent:\n\"%s\"\n", count, deprecatedAPI, supportedAPI)
 				modifiedManifest = strings.ReplaceAll(modifiedManifest, deprecatedAPI, supportedAPI)
 			}
 		}

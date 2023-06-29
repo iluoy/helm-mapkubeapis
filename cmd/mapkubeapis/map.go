@@ -17,25 +17,17 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/helm/helm-mapkubeapis/pkg/common"
+	"github.com/helm/helm-mapkubeapis/pkg/log"
 	v3 "github.com/helm/helm-mapkubeapis/pkg/v3"
 )
-
-// MapOptions contains the options for Map operation
-type MapOptions struct {
-	DryRun           bool
-	MapFile          string
-	ReleaseName      string
-	ReleaseNamespace string
-}
 
 var (
 	settings *EnvSettings
@@ -43,19 +35,20 @@ var (
 
 func newMapCmd(out io.Writer, args []string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "mapkubeapis [flags] RELEASE",
+		Use:          "mapkubeapis [flags] ",
 		Short:        "Map release deprecated or removed Kubernetes APIs in-place",
 		Long:         "Map release deprecated or removed Kubernetes APIs in-place",
 		SilenceUsage: true,
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				cmd.Help()
-				os.Exit(1)
-			} else if len(args) > 1 {
-				return errors.New("only one release name may be passed at a time")
-			}
-			return nil
-		},
+		/*
+			Args: func(cmd *cobra.Command, args []string) error {
+				if len(args) < 0 {
+					return errors.New("only one release name may be passed at a time")
+					cmd.Help()
+					os.Exit(1)
+				}
+				return nil
+			},
+		*/
 
 		RunE: runMap,
 	}
@@ -89,46 +82,40 @@ func newMapCmd(out io.Writer, args []string) *cobra.Command {
 }
 
 func runMap(cmd *cobra.Command, args []string) error {
-	releaseName := args[0]
-	mapOptions := MapOptions{
-		DryRun:           settings.DryRun,
-		MapFile:          settings.MapFile,
-		ReleaseName:      releaseName,
-		ReleaseNamespace: settings.Namespace,
-	}
+
+	logger := log.NewLogger()
 	kubeConfig := common.KubeConfig{
 		Context: settings.KubeContext,
 		File:    settings.KubeConfigFile,
 	}
 
-	return Map(mapOptions, kubeConfig)
+	return Map(settings, logger, kubeConfig)
 }
 
 // Map checks for Kubernetes deprecated or removed APIs in the manifest of the last deployed release version
 // and maps those API versions to supported versions. It then adds a new release version with
 // the updated APIs and supersedes the version with the unsupported APIs.
-func Map(mapOptions MapOptions, kubeConfig common.KubeConfig) error {
-	if mapOptions.DryRun {
-		log.Println("NOTE: This is in dry-run mode, the following actions will not be executed.")
-		log.Println("Run without --dry-run to take the actions described below:")
-		log.Println()
+func Map(settings *EnvSettings, logger *logrus.Logger, kubeConfig common.KubeConfig) error {
+	if settings.DryRun {
+		logger.Info("NOTE: This is in dry-run mode, the following actions will not be executed.")
+		logger.Info("Run without --dry-run to take the actions described below:")
 	}
 
-	log.Printf("Release '%s' will be checked for deprecated or removed Kubernetes APIs and will be updated if necessary to supported API versions.\n", mapOptions.ReleaseName)
-
 	options := common.MapOptions{
-		DryRun:           mapOptions.DryRun,
-		KubeConfig:       kubeConfig,
-		MapFile:          mapOptions.MapFile,
-		ReleaseName:      mapOptions.ReleaseName,
-		ReleaseNamespace: mapOptions.ReleaseNamespace,
+		Logger:                      logger,
+		DryRun:                      settings.DryRun,
+		KubeConfig:                  kubeConfig,
+		MapFile:                     settings.MapFile,
+		Namespaces:                  settings.Namespaces,
+		ExceptNamespaces:            settings.ExceptNamespaces,
+		AllNamespaces:               settings.AllNamespaces,
+		ReleasesAndNamespaces:       settings.ReleasesAndNamespaces,
+		ExceptReleasesAndNamespaces: settings.ExceptReleasesAndNamespaces,
 	}
 
 	if err := v3.MapReleaseWithUnSupportedAPIs(options); err != nil {
 		return err
 	}
-
-	log.Printf("Map of release '%s' deprecated or removed APIs to supported versions, completed successfully.\n", mapOptions.ReleaseName)
 
 	return nil
 }
