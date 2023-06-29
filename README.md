@@ -69,34 +69,8 @@ Flags:
 Example output:
 
 ```console
-$ helm mapkubeapis cluster-role-example --namespace test-cluster-role-example         
-2022/02/07 18:48:49 Release 'cluster-role-example' will be checked for deprecated or removed Kubernetes APIs and will be updated if necessary to supported API versions.
-2022/02/07 18:48:49 Get release 'cluster-role-example' latest version.
-2022/02/07 18:48:49 Check release 'cluster-role-example' for deprecated or removed APIs...
-2022/02/07 18:48:49 Found 1 instances of deprecated or removed Kubernetes API:
-"apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-"
-Supported API equivalent:
-"apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-"
-2022/02/07 18:48:49 Found 1 instances of deprecated or removed Kubernetes API:
-"apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-"
-Supported API equivalent:
-"apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-"
-2022/02/07 18:48:49 Finished checking release 'cluster-role-example' for deprecated or removed APIs.
-2022/02/07 18:48:49 Deprecated or removed APIs exist, updating release: cluster-role-example.
-2022/02/07 18:48:49 Set status of release version 'cluster-role-example.v1' to 'superseded'.
-2022/02/07 18:48:49 Release version 'cluster-role-example.v1' updated successfully.
-2022/02/07 18:48:49 Add release version 'cluster-role-example.v2' with updated supported APIs.
-2022/02/07 18:48:49 Release version 'cluster-role-example.v2' added successfully.
-2022/02/07 18:48:49 Release 'cluster-role-example' with deprecated or removed APIs updated successfully to new version.
-2022/02/07 18:48:49 Map of release 'cluster-role-example' deprecated or removed APIs to supported versions, completed successfully.
+$ helm mapkubeapis mapkubeapis --namespaces "ns1,ns2" --releases-namespaces release3.ns3 --except-namespaces ns4 --except-releases-namespaces release5.ns2 --except-releases-namespaces release3.ns3 -A
+
 ```
 
 ## API Mapping
