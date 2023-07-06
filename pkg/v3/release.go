@@ -198,7 +198,7 @@ FILTER:
 // If it finds any, it will create a new release version with the APIs mapped to the supported versions
 func MapReleaseWithUnSupportedAPIs(mapOptions common.MapOptions) error {
 	logger := mapOptions.Logger
-	cfg, err := GetActionConfig(mapOptions.KubeConfig)
+	cfg, err := GetActionConfig("", mapOptions.KubeConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to get Helm action configuration")
 	}
@@ -239,9 +239,13 @@ func MapReleaseWithUnSupportedAPIs(mapOptions common.MapOptions) error {
 			log_with_fields.Infof("Deprecated or removed APIs exist, for release: %s.%s.\n", releaseName, namespace)
 		} else {
 			log_with_fields.Infof("Deprecated or removed APIs exist, updating release: %s.%s.\n", releaseName, namespace)
-			if err := updateRelease(res, modifiedManifest, cfg, logger); err != nil {
-				continue
-				//return errors.Wrapf(err, "failed to update release '%s'.'%s'", releaseName, namespace)
+			new_cfg, err := GetActionConfig(namespace, mapOptions.KubeConfig)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get namesapce cfg for release '%s'.'%s'", releaseName, namespace)
+			}
+			if err := updateRelease(res, modifiedManifest, new_cfg, logger); err != nil {
+				//continue
+				return errors.Wrapf(err, "failed to update release '%s'.'%s'", releaseName, namespace)
 			}
 			log_with_fields.Infof("Release '%s'.'%s' with deprecated or removed APIs updated successfully to new version.\n", releaseName, namespace)
 		}
