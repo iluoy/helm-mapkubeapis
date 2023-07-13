@@ -200,13 +200,13 @@ func MapReleaseWithUnSupportedAPIs(mapOptions common.MapOptions) error {
 	logger := mapOptions.Logger
 	cfg, err := GetActionConfig("", mapOptions.KubeConfig)
 	if err != nil {
-		return errors.Wrap(err, "failed to get Helm action configuration")
+		logger.Errorf("failed to get Helm action configuration: %s", err)
 	}
 
 	client := action.NewList(cfg)
 	results, err := client.Run()
 	if err != nil {
-		return errors.Wrapf(err, "failed to list all releases")
+		logger.Errorf("failed to list all releases: %s", err)
 	}
 	releases := getReleases(mapOptions)
 	results = filterReleases(results, releases)
@@ -225,14 +225,13 @@ func MapReleaseWithUnSupportedAPIs(mapOptions common.MapOptions) error {
 
 		modifiedManifest, err := common.ReplaceManifestUnSupportedAPIs(origManifest, mapOptions.MapFile, mapOptions.KubeConfig, logger)
 		if err != nil {
+			log_with_fields.Errorf("Check release %s.%s for deprecated or removed APIs failed: %s\n", releaseName, namespace, err)
 			continue
-			//return err
 		}
 		log_with_fields.Infof("Finished checking release %s.%s for deprecated or removed APIs.\n", releaseName, namespace)
 		if modifiedManifest == origManifest {
 			log_with_fields.Infof("Release %s.%s has no deprecated or removed APIs.\n", releaseName, namespace)
 			continue
-			//return nil
 		}
 
 		if mapOptions.DryRun {
@@ -241,11 +240,13 @@ func MapReleaseWithUnSupportedAPIs(mapOptions common.MapOptions) error {
 			log_with_fields.Infof("Deprecated or removed APIs exist, updating release: %s.%s.\n", releaseName, namespace)
 			new_cfg, err := GetActionConfig(namespace, mapOptions.KubeConfig)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get namesapce cfg for release '%s'.'%s'", releaseName, namespace)
+				log_with_fields.Errorf("failed to get action config for release %s.%s: %s", releaseName, namespace, err)
+				continue
 			}
 			if err := updateRelease(res, modifiedManifest, new_cfg, logger); err != nil {
 				//continue
-				return errors.Wrapf(err, "failed to update release '%s'.'%s'", releaseName, namespace)
+				log_with_fields.Errorf("failed to update release %s.%s: %s", releaseName, namespace, err)
+				continue
 			}
 			log_with_fields.Infof("Release '%s'.'%s' with deprecated or removed APIs updated successfully to new version.\n", releaseName, namespace)
 		}
