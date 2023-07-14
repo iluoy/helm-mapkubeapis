@@ -32,3 +32,5 @@ $ helm mapkubeapis mapkubeapis --namespaces "ns1,ns2" --releases-namespaces rele
 
 ```
 
+### ToDo
+improve the performance
